@@ -19,6 +19,28 @@ export default async function handler(req, res) {
   const data = await tokenRes.json();
   if (!data.access_token) return res.status(400).json(data);
 
-  // Decap expects a JSON with the token
-  res.json({ token: data.access_token });
+  const page = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Authentication Complete</title>
+  </head>
+  <body>
+    <script>
+      (function() {
+        function send(message) {
+          if (window.opener) {
+            window.opener.postMessage(message, '*');
+          }
+          window.close();
+        }
+        send('authorization:github:success:' + ${JSON.stringify(data.access_token)});
+      })();
+    </script>
+  </body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html');
+  res.status(200).send(page);
 }
