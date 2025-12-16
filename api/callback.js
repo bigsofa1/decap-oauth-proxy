@@ -19,6 +19,9 @@ export default async function handler(req, res) {
   const data = await tokenRes.json();
   if (!data.access_token) return res.status(400).json(data);
 
+  const targetOrigin = req.query.state || '*';
+  const safeOrigin = /^https?:\/\//.test(targetOrigin) ? targetOrigin : '*';
+
   const page = `
 <!DOCTYPE html>
 <html>
@@ -30,17 +33,15 @@ export default async function handler(req, res) {
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
-        // Wait for the opener to send us its origin, then respond with the token.
-        function receiveMessage(event) {
-          if (!window.opener) return;
-          window.opener.postMessage('authorization:github:success:' + token, event.origin);
-          window.close();
-        }
-        window.addEventListener('message', receiveMessage, false);
-        // Kick off the handshake so the opener replies with its origin.
+        var targetOrigin = ${JSON.stringify(safeOrigin)};
         if (window.opener) {
-          window.opener.postMessage('authorizing:github', '*');
+          try {
+            window.opener.postMessage('authorization:github:success:' + token, targetOrigin);
+          } catch (e) {
+            window.opener.postMessage('authorization:github:success:' + token, '*');
+          }
         }
+        window.close();
       })();
     </script>
   </body>
