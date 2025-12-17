@@ -48,6 +48,8 @@ export default async function handler(req, res) {
           if (!window.opener) return;
           // Object payload (Decap ≥3 expects an object)
           window.opener.postMessage({ token: token, provider: 'github' }, origin);
+          // JSON-string payload (some custom widgets expect a JSON string)
+          window.opener.postMessage(JSON.stringify({ token: token, provider: 'github' }), origin);
           // Legacy string payload (older Decap/Netlify CMS)
           window.opener.postMessage('authorization:github:success:' + token, origin);
         }
