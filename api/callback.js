@@ -19,6 +19,18 @@ export default async function handler(req, res) {
   const data = await tokenRes.json();
   if (!data.access_token) return res.status(400).json(data);
 
+  const targetOrigin = req.query.state;
+  let fallbackUrl = null;
+  if (targetOrigin && /^https?:\/\//.test(targetOrigin)) {
+    try {
+      const parsed = new URL(targetOrigin);
+      parsed.hash = `#access_token=${data.access_token}`;
+      fallbackUrl = parsed.toString();
+    } catch (e) {
+      // ignore invalid URL
+    }
+  }
+
   const page = `
 <!DOCTYPE html>
 <html>
@@ -31,6 +43,7 @@ export default async function handler(req, res) {
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
+        var fallbackUrl = ${fallbackUrl ? JSON.stringify(fallbackUrl) : 'null'};
 
         function postAll(origin) {
           if (!window.opener) return;
@@ -45,8 +58,12 @@ export default async function handler(req, res) {
         postAll('*');
         setTimeout(function() {
           try { postAll('*'); } catch (e) {}
-          window.close();
-        }, 800);
+          if (fallbackUrl) {
+            window.location.href = fallbackUrl;
+          } else {
+            window.close();
+          }
+        }, 1200);
       })();
     </script>
   </body>
