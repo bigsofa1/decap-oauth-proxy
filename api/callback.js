@@ -30,31 +30,19 @@ export default async function handler(req, res) {
     <title>Authentication Complete</title>
   </head>
   <body>
-    <p>You can close this window.</p>
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
         var targetOrigin = ${JSON.stringify(safeOrigin)};
-        function postToken(origin) {
+        function postAll(origin) {
           if (!window.opener) return;
-          try {
-            window.opener.postMessage('authorization:github:success:' + token, origin);
-          } catch (err) {
-            window.opener.postMessage('authorization:github:success:' + token, '*');
-          }
+          // Object payload (Decap ≥3 expects an object)
+          window.opener.postMessage({ token: token, provider: 'github' }, origin);
+          // Legacy string payload (older Decap/Netlify CMS)
+          window.opener.postMessage('authorization:github:success:' + token, origin);
         }
-        function receiveMessage(event) {
-          postToken(event.origin || targetOrigin);
-          setTimeout(function() { window.close(); }, 50);
-        }
-        window.addEventListener('message', receiveMessage, false);
-        if (window.opener) {
-          window.opener.postMessage('authorizing:github', '*');
-        }
-        setTimeout(function() {
-          postToken(targetOrigin);
-          window.close();
-        }, 2000);
+        try { postAll(targetOrigin); } catch (e) { postAll('*'); }
+        setTimeout(function() { try { postAll('*'); } catch (e) {} window.close(); }, 200);
       })();
     </script>
   </body>
