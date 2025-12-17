@@ -58,11 +58,19 @@ export default async function handler(req, res) {
         postAll('*');
         setTimeout(function() {
           try { postAll('*'); } catch (e) {}
+          // Force-set hash on opener so Decap can pick up the token even if postMessage is ignored.
+          if (window.opener) {
+            try {
+              var href = window.opener.location.href.split('#')[0] + '#access_token=' + token;
+              window.opener.location.replace(href);
+            } catch (e) {
+              // ignore cross-origin errors
+            }
+          }
           if (fallbackUrl) {
             window.location.href = fallbackUrl;
-          } else {
-            window.close();
           }
+          window.close();
         }, 1200);
       })();
     </script>
