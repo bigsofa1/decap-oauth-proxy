@@ -19,9 +19,6 @@ export default async function handler(req, res) {
   const data = await tokenRes.json();
   if (!data.access_token) return res.status(400).json(data);
 
-  const targetOrigin = req.query.state || '*';
-  const safeOrigin = /^https?:\/\//.test(targetOrigin) ? targetOrigin : '*';
-
   const page = `
 <!DOCTYPE html>
 <html>
@@ -34,15 +31,6 @@ export default async function handler(req, res) {
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
-        var targetOrigin = ${JSON.stringify(safeOrigin)};
-        var fallbackUrl = null;
-        try {
-          var parsed = new URL(targetOrigin);
-          parsed.hash = '#access_token=' + token;
-          fallbackUrl = parsed.toString();
-        } catch (e) {
-          // ignore invalid URL; will just close later
-        }
 
         function postAll(origin) {
           if (!window.opener) return;
@@ -53,15 +41,12 @@ export default async function handler(req, res) {
           // Legacy string payload (older Decap/Netlify CMS)
           window.opener.postMessage('authorization:github:success:' + token, origin);
         }
-        try { postAll(targetOrigin); } catch (e) { postAll('*'); }
+        // Chromium-origin quirk: always blast to "*" to ensure the parent receives it.
+        postAll('*');
         setTimeout(function() {
           try { postAll('*'); } catch (e) {}
-          if (fallbackUrl) {
-            window.location.href = fallbackUrl;
-          } else {
-            window.close();
-          }
-        }, 1500);
+          window.close();
+        }, 800);
       })();
     </script>
   </body>
