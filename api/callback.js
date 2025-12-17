@@ -30,18 +30,31 @@ export default async function handler(req, res) {
     <title>Authentication Complete</title>
   </head>
   <body>
+    <p>You can close this window.</p>
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
         var targetOrigin = ${JSON.stringify(safeOrigin)};
-        if (window.opener) {
+        function postToken(origin) {
+          if (!window.opener) return;
           try {
-            window.opener.postMessage('authorization:github:success:' + token, targetOrigin);
-          } catch (e) {
+            window.opener.postMessage('authorization:github:success:' + token, origin);
+          } catch (err) {
             window.opener.postMessage('authorization:github:success:' + token, '*');
           }
         }
-        window.close();
+        function receiveMessage(event) {
+          postToken(event.origin || targetOrigin);
+          setTimeout(function() { window.close(); }, 50);
+        }
+        window.addEventListener('message', receiveMessage, false);
+        if (window.opener) {
+          window.opener.postMessage('authorizing:github', '*');
+        }
+        setTimeout(function() {
+          postToken(targetOrigin);
+          window.close();
+        }, 2000);
       })();
     </script>
   </body>
