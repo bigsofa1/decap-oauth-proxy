@@ -30,10 +30,20 @@ export default async function handler(req, res) {
     <title>Authentication Complete</title>
   </head>
   <body>
+    <p>Finishing sign-in…</p>
     <script>
       (function() {
         var token = ${JSON.stringify(data.access_token)};
         var targetOrigin = ${JSON.stringify(safeOrigin)};
+        var fallbackUrl = null;
+        try {
+          var parsed = new URL(targetOrigin);
+          parsed.hash = '#access_token=' + token;
+          fallbackUrl = parsed.toString();
+        } catch (e) {
+          // ignore invalid URL; will just close later
+        }
+
         function postAll(origin) {
           if (!window.opener) return;
           // Object payload (Decap ≥3 expects an object)
@@ -42,7 +52,14 @@ export default async function handler(req, res) {
           window.opener.postMessage('authorization:github:success:' + token, origin);
         }
         try { postAll(targetOrigin); } catch (e) { postAll('*'); }
-        setTimeout(function() { try { postAll('*'); } catch (e) {} window.close(); }, 200);
+        setTimeout(function() {
+          try { postAll('*'); } catch (e) {}
+          if (fallbackUrl) {
+            window.location.href = fallbackUrl;
+          } else {
+            window.close();
+          }
+        }, 1500);
       })();
     </script>
   </body>
